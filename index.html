@@ -195,7 +195,7 @@
   <div class="fluid a"></div><div class="fluid b"></div><div class="fluid c"></div>
   <div class="vignette"></div><div class="grain"></div>
 
-  <div id="biliContainer"><audio id="audioPlayer" preload="none" crossorigin="anonymous"></audio></div>
+  <div id="biliContainer"><iframe id="biliPlayer" src="" allow="autoplay" allowfullscreen></iframe></div>
 
   <div class="card">
     <div class="header">
@@ -344,27 +344,13 @@ const THEMES = {
   }
 };
 
-// ═══════════════ CID LOOKUP ═══════════════════
-const CIDS = {
-BV1A54y1k76C:257960138,BV1VES1BrEsk:34424425874,BV1YapSeyEgv:500001654957163,
-BV1r45vzQEJR:29466036889,BV1mt421K7Jv:1552078698,BV1aKu4ziEei:31067081185,
-BV1EK411B7UX:934521762,BV1Xp4y1P7vd:1248853353,BV1MCdfBWE9m:37643616268,
-BV1RvCtB5EjR:33980681281,BV1nbcrzBE3p:36650287895,BV1hhAozuERH:36423206551,
-BV1DCt6zpECu:31553945627,BV1TTqnBfEkq:34816658728,BV1XJ411w7TB:117333211,
-BV1XkBRYjEqL:27059687044,BV1GV4y1o7gk:1107105970,BV1Z5kVBBE5J:35496985570,
-BV1YbRzBMED5:38095750476,BV1GvYxzcEoo:31784305441,BV1crYLzjEV8:32223006416,
-BV11DRuBrERg:38006161593,BV1DeRxB4EEH:38137757763,BV1pqfmYFELd:28110685531,
-BV1WmAoztEkQ:36419732187
-};
-function getCid(bvid){ return CIDS[bvid] || 0; }
-
 // ═══════════════════ STATE ═══════════════════
 let dayKey, theme, currentVidIdx = 0, isPlaying = false, isDJSpeaking = false;
 let trackStartTime = 0, progressTimer = null, nextTimer = null;
 let introAudio = null, adAudio = null, hasInteracted = false;
 
 // DOM
-const audioPlayer = document.getElementById('audioPlayer');
+const biliPlayer = document.getElementById('biliPlayer');
 const playBtn = document.getElementById('playBtn');
 const iconPlay = document.getElementById('iconPlay');
 const iconPause = document.getElementById('iconPause');
@@ -419,51 +405,11 @@ function updateTrackDisplay(v){
   timeTotal.textContent = mmss(v.dur);
 }
 
-// ── B站 Audio (real volume control via <audio>) ──
-const BILI_API = 'https://api.bilibili.com/x/player/playurl';
-
-async function fetchBiliAudioUrl(bvid, cid){
-  const url = `${BILI_API}?bvid=${bvid}&cid=${cid}&fnval=1&qn=0&platform=html5`;
-  const resp = await fetch(url, {headers:{'Referer':'https://www.bilibili.com'}});
-  const data = await resp.json();
-  const durl = data?.data?.durl;
-  if(durl && durl[0]) return durl[0].url;
-  throw new Error('No audio URL');
-}
-
-function playBili(bvid, cid){
-  fetchBiliAudioUrl(bvid, cid).then(mp4url => {
-    audioPlayer.src = mp4url;
-    audioPlayer.volume = 1.0;
-    audioPlayer.play().catch(()=>{});
-  }).catch(()=>{});
-}
-
-function stopBili(){
-  audioPlayer.pause();
-  audioPlayer.src = '';
-}
-
-function duckBili(){
-  // Smoothly lower volume
-  let vol = audioPlayer.volume;
-  const step = () => {
-    vol = Math.max(0.15, vol - 0.06);
-    audioPlayer.volume = vol;
-    if(vol > 0.15) requestAnimationFrame(step);
-  };
-  step();
-}
-
-function restoreBili(){
-  let vol = audioPlayer.volume;
-  const step = () => {
-    vol = Math.min(1.0, vol + 0.06);
-    audioPlayer.volume = vol;
-    if(vol < 1.0) requestAnimationFrame(step);
-  };
-  step();
-}
+// ── B站 ──
+function playBili(bvid){ biliPlayer.src = `https://player.bilibili.com/player.html?bvid=${bvid}&autoplay=1&high_quality=1&danmaku=0&muted=0`; }
+function stopBili(){ biliPlayer.src = ''; }
+// Note: B站 iframe doesn't allow external volume control — music plays at full volume throughout.
+// Francis's voice is layered on top, just like a real radio DJ talking over the music.
 
 // ── Audio player ──
 function playAudioFile(src, onEnd){
@@ -492,12 +438,10 @@ function playThemeIntro(){
   djInd.classList.add('active');
   djLabel.textContent = 'Francis · 今日主题';
   adBadge.classList.remove('active');
-  duckBili();
 
   introAudio = playAudioFile(`audio/theme-${dayKey}.mp3`, () => {
     isDJSpeaking = false;
     djInd.classList.remove('active');
-    restoreBili();
     if(!isPlaying) return;
     playCurrentVideo();
   });
@@ -511,7 +455,7 @@ function playCurrentVideo(){
   adBadge.classList.remove('active');
   disc.classList.add('playing');
 
-  playBili(v.bvid, getCid(v.bvid));
+  playBili(v.bvid);
   trackStartTime = Date.now();
   updateProgressUI();
   scheduleNext();
@@ -523,13 +467,11 @@ function playAd(){
   adBadge.classList.add('active');
   djInd.classList.remove('active');
   disc.classList.add('playing');
-  duckBili();
 
   const adIdx = currentVidIdx % 4;
   adAudio = playAudioFile(`audio/ad-${adIdx}.mp3`, () => {
     isDJSpeaking = false;
     adBadge.classList.remove('active');
-    restoreBili();
     if(!isPlaying) return;
     playCurrentVideo();
   });
@@ -542,13 +484,11 @@ function playTransition(){
   djLabel.textContent = 'Francis';
   adBadge.classList.remove('active');
   disc.classList.add('playing');
-  duckBili();
 
   const tIdx = currentVidIdx % 8;
   introAudio = playAudioFile(`audio/trans-${tIdx}.mp3`, () => {
     isDJSpeaking = false;
     djInd.classList.remove('active');
-    restoreBili();
     if(!isPlaying) return;
     playCurrentVideo();
   });
