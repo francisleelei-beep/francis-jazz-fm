@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Francis Jazz FM — 24/7 爵士电台</title>
+<meta name="description" content="Francis Jazz FM — 24小时不间断爵士电台。每日不同主题，Francis 为你主持。" />
+<meta property="og:title" content="Francis Jazz FM — 24/7 爵士电台" />
+<meta property="og:description" content="周一经典，周三硬波普，周末慵懒。七日七主题，24小时不间断。" />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;1,9..40,400&family=JetBrains+Mono:wght@300;400;500&family=Noto+Serif+SC:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080706;
+    --t1: #f0e8dd; --t2: #a09888; --t3: #5c5448;
+    --amber: #d4983c; --amber-b: #e8b84b; --copper: #b8753e;
+    --fd: 'Abril Fatface', serif;
+    --fn: 'Noto Serif SC', 'PingFang SC', serif;
+    --fs: 'Noto Sans SC', 'PingFang SC', sans-serif;
+    --fm: 'JetBrains Mono', monospace;
+  }
+  html, body {
+    margin:0;padding:0;height:100%;width:100%;
+    font-family:var(--fs);-webkit-font-smoothing:antialiased;
+    overflow:hidden;background:var(--bg);color:var(--t1);
+  }
+  *{box-sizing:border-box}
+
+  .stage {
+    position:fixed;inset:0;display:grid;place-items:center;overflow:hidden;
+    background:radial-gradient(ellipse at 50% 40%, #16120e 0%, #0c0a08 55%, #060504 100%);
+  }
+  .fluid {
+    position:absolute;border-radius:50%;filter:blur(130px) saturate(1.2);
+    mix-blend-mode:screen;pointer-events:none;will-change:transform;opacity:0.5;
+  }
+  .fluid.a { width:55vmin;height:55vmin;left:50%;top:50%;margin-left:-27vmin;margin-top:-27vmin;
+    background:radial-gradient(circle at 45% 40%,oklch(0.60 0.13 68)0%,oklch(0.42 0.11 60)40%,oklch(0.26 0.07 52/0)70%);
+    animation:da 30s cubic-bezier(.45,.05,.55,.95) infinite; }
+  .fluid.b { width:48vmin;height:48vmin;left:50%;top:50%;margin-left:-24vmin;margin-top:-24vmin;
+    background:radial-gradient(circle at 55% 55%,oklch(0.50 0.12 40)0%,oklch(0.35 0.09 33)42%,oklch(0.22 0.05 28/0)68%);
+    animation:db 38s cubic-bezier(.45,.05,.55,.95) infinite; }
+  .fluid.c { width:42vmin;height:42vmin;left:50%;top:50%;margin-left:-21vmin;margin-top:-21vmin;
+    opacity:0.3;filter:blur(110px);
+    background:radial-gradient(circle at 40% 60%,oklch(0.32 0.04 20)0%,oklch(0.20 0.03 15)48%,oklch(0.12 0.02 10/0)72%);
+    animation:dc 46s cubic-bezier(.45,.05,.55,.95) infinite; }
+  @keyframes da { 0%{transform:translate(-12vmin,-8vmin)scale(1)rotate(0)}50%{transform:translate(18vmin,4vmin)scale(.9)rotate(80deg)}100%{transform:translate(-12vmin,-8vmin)scale(1)rotate(160deg)} }
+  @keyframes db { 0%{transform:translate(16vmin,10vmin)scale(1.03)rotate(0)}50%{transform:translate(-20vmin,-2vmin)scale(1.1)rotate(-90deg)}100%{transform:translate(16vmin,10vmin)scale(1.03)rotate(-180deg)} }
+  @keyframes dc { 0%{transform:translate(0,-2vmin)scale(1)}50%{transform:translate(6vmin,8vmin)scale(.85)}100%{transform:translate(0,-2vmin)scale(1)} }
+  @media(prefers-reduced-motion:reduce){.fluid{animation-duration:240s!important}}
+
+  .vignette { position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(ellipse at 50% 45%,transparent 35%,rgba(6,4,2,0.55)100%); }
+  .grain { position:absolute;inset:0;opacity:.03;pointer-events:none;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.45 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+
+  #biliContainer { position:fixed;left:0;top:0;width:1px;height:1px;opacity:.01;pointer-events:none;z-index:-1; }
+  #biliPlayer { width:100%;height:100%;border:none; }
+
+  /* Card */
+  .card {
+    position:relative;width:460px;max-width:calc(100vw - 32px);height:min(700px,calc(100vh - 48px));
+    border-radius:24px;overflow:hidden;
+    box-shadow:0 48px 96px -24px rgba(0,0,0,.6),0 12px 32px -8px rgba(0,0,0,.4),0 0 0 1px rgba(180,140,100,.06);
+    display:flex;flex-direction:column;
+    background:linear-gradient(175deg, #15120e 0%, #100d09 100%);
+  }
+
+  /* Header */
+  .header {
+    flex:0 0 auto;padding:22px 28px 16px;
+    display:flex;justify-content:space-between;align-items:flex-start;
+  }
+  .hl { display:flex;flex-direction:column;gap:2px; }
+  .station-name { font-family:var(--fd);font-size:28px;line-height:1;color:var(--t1);letter-spacing:.02em;
+    text-shadow:0 2px 12px rgba(180,130,60,.15); }
+  .theme-tag {
+    display:inline-flex;align-items:center;gap:6px;
+    font-family:var(--fs);font-size:12px;color:var(--amber);margin-top:6px;
+  }
+  .live-badge {
+    display:flex;align-items:center;gap:7px;
+    font-family:var(--fm);font-size:9px;font-weight:500;color:var(--copper);
+    letter-spacing:.12em;text-transform:uppercase;margin-top:4px;
+  }
+  .live-dot { width:7px;height:7px;border-radius:999px;background:var(--amber-b);
+    box-shadow:0 0 6px rgba(232,184,75,.6),0 0 18px rgba(212,152,60,.25);
+    animation:dp 2s ease-in-out infinite; }
+  @keyframes dp { 0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.75)} }
+  .clock {
+    font-family:var(--fm);font-size:10px;color:var(--t3);letter-spacing:.06em;margin-top:4px;
+  }
+
+  /* Player */
+  .player-area {
+    flex:1 1 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:10px 28px;min-height:0;
+  }
+  .disc-wrap { position:relative;width:200px;height:200px;margin-bottom:24px; }
+  .disc {
+    width:200px;height:200px;border-radius:50%;
+    background:radial-gradient(circle at 50% 50%,#1a1612 0%,#0e0c09 30%,#1a1612 31%,#0e0c09 45%,#1a1612 46%,#0e0c09 60%,#1a1612 61%,#0c0a07 100%);
+    border:2px solid rgba(180,140,100,.15);
+    box-shadow:0 0 0 12px rgba(180,140,100,.03),0 0 0 24px rgba(180,140,100,.015),0 20px 60px -10px rgba(0,0,0,.5);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .disc.playing { animation:spin 4s linear infinite; }
+  .disc.paused { animation-play-state:paused; }
+  @keyframes spin { from{transform:rotate(0)}to{transform:rotate(360deg)} }
+  .disc-hole { width:24px;height:24px;border-radius:50%;background:#0a0806;border:2px solid rgba(180,140,100,.2); }
+  .ring { position:absolute;inset:-8px;border-radius:50%;border:1.5px solid transparent;
+    border-top-color:rgba(200,160,100,.3);border-right-color:rgba(200,160,100,.15);
+    animation:rp 1.5s ease-in-out infinite;pointer-events:none; }
+  .ring.r2 { inset:-16px;border-top-color:rgba(200,160,100,.15);border-right-color:rgba(200,160,100,.08);
+    animation-delay:.4s;animation-duration:2s; }
+  @keyframes rp { 0%,100%{opacity:.4;transform:rotate(0)}50%{opacity:1;transform:rotate(180deg)} }
+
+  .eq-bars { position:absolute;inset:-40px;display:flex;align-items:flex-end;justify-content:center;gap:3px;pointer-events:none; }
+  .eq-bar { width:3px;background:linear-gradient(to top,var(--amber),rgba(200,140,60,.4));border-radius:2px;
+    animation:ej .8s ease-in-out infinite alternate;box-shadow:0 0 6px rgba(212,152,60,.25); }
+  .eq-bar:nth-child(1){height:15px;animation-delay:0s}.eq-bar:nth-child(2){height:35px;animation-delay:.1s}
+  .eq-bar:nth-child(3){height:20px;animation-delay:.2s}.eq-bar:nth-child(4){height:50px;animation-delay:.05s}
+  .eq-bar:nth-child(5){height:30px;animation-delay:.3s}.eq-bar:nth-child(6){height:55px;animation-delay:.15s}
+  .eq-bar:nth-child(7){height:25px;animation-delay:.25s}.eq-bar:nth-child(8){height:45px;animation-delay:.08s}
+  .eq-bar:nth-child(9){height:18px;animation-delay:.35s}.eq-bar:nth-child(10){height:40px;animation-delay:.2s}
+  @keyframes ej { 0%{transform:scaleY(.3);opacity:.3}100%{transform:scaleY(1);opacity:1} }
+
+  .track-info { text-align:center;position:relative;z-index:2; }
+  .track-title { font-family:var(--fn);font-size:20px;font-weight:600;color:var(--t1);line-height:1.3;margin-bottom:4px; }
+  .track-artist { font-size:13px;color:var(--t2);font-family:var(--fs);margin-bottom:6px; }
+  .dj-ind {
+    display:inline-flex;align-items:center;gap:6px;background:rgba(212,152,60,.08);
+    border:1px solid rgba(180,140,100,.12);border-radius:20px;padding:5px 14px;
+    font-size:11px;color:var(--amber);font-family:var(--fs);font-weight:500;
+    transition:all .3s;opacity:0;transform:translateY(6px);
+  }
+  .dj-ind.active { opacity:1;transform:translateY(0); }
+  .dj-ind .md { width:5px;height:5px;border-radius:50%;background:var(--amber-b);animation:dp 1s ease-in-out infinite; }
+  .ad-badge {
+    display:inline-flex;align-items:center;gap:4px;background:rgba(232,184,75,.06);
+    border:1px solid rgba(232,184,75,.12);border-radius:20px;padding:3px 10px;
+    font-size:10px;color:var(--amber-b);font-family:var(--fm);letter-spacing:.06em;
+    transition:all .3s;opacity:0;transform:translateY(6px);
+  }
+  .ad-badge.active { opacity:1;transform:translateY(0); }
+
+  /* Controls */
+  .controls { flex:0 0 auto;padding:14px 28px 24px;display:flex;flex-direction:column;gap:12px; }
+  .progress-row { display:flex;align-items:center;gap:10px;font-family:var(--fm);font-size:10px;color:var(--t3); }
+  .progress-bar { flex:1;height:3px;background:rgba(180,140,100,.08);border-radius:2px;cursor:pointer;overflow:hidden; }
+  .progress-fill { position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--amber),var(--amber-b));
+    border-radius:2px;transition:width .3s linear;width:0%;box-shadow:0 0 8px rgba(212,152,60,.3); }
+  .progress-bar { position:relative; }
+
+  .btn-row { display:flex;align-items:center;justify-content:center;gap:18px; }
+  .ctrl-btn { border:none;background:none;cursor:pointer;color:var(--t2);padding:6px;
+    display:flex;align-items:center;justify-content:center;border-radius:50%;transition:color .2s,transform .12s; }
+  .ctrl-btn:hover{color:var(--t1);transform:scale(1.06)}.ctrl-btn:active{transform:scale(.94)}
+
+  .play-btn {
+    width:58px;height:58px;border-radius:50%;
+    background:radial-gradient(circle at 45% 40%,#2a1e10 0%,#140e06 100%);
+    border:1.5px solid rgba(200,160,100,.18);color:var(--amber-b);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:all .25s;position:relative;
+    box-shadow:0 4px 16px rgba(0,0,0,.4),0 0 30px rgba(200,140,60,.08),inset 0 1px 0 rgba(255,255,255,.02);
+  }
+  .play-btn::after{content:'';position:absolute;inset:-4px;border-radius:50%;border:1px solid rgba(200,160,100,.05);pointer-events:none}
+  .play-btn:hover{border-color:rgba(220,180,100,.3);box-shadow:0 6px 20px rgba(0,0,0,.5),0 0 40px rgba(200,140,60,.14);transform:scale(1.04)}
+  .play-btn:active{transform:scale(.95)}
+  .play-btn svg{width:26px;height:26px;filter:drop-shadow(0 0 4px rgba(232,184,75,.3))}
+
+  .skip-btn {
+    width:40px;height:40px;border-radius:50%;border:1px solid rgba(180,140,100,.08);
+    background:rgba(180,140,100,.02);color:var(--t2);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:all .2s;
+  }
+  .skip-btn:hover{color:var(--amber-b);background:rgba(180,140,100,.05);border-color:rgba(200,160,100,.15)}
+
+  .info-row { text-align:center;font-family:var(--fm);font-size:9px;color:var(--t3);letter-spacing:.05em; }
+
+  @media(max-width:500px){
+    .card{height:min(620px,calc(100vh - 32px));border-radius:20px}
+    .header{padding:16px 20px 12px}.station-name{font-size:24px}
+    .player-area{padding:8px 20px}.disc-wrap{width:160px;height:160px;margin-bottom:18px}
+    .disc{width:160px;height:160px}.track-title{font-size:17px}
+    .controls{padding:10px 20px 18px}.play-btn{width:50px;height:50px}
+    .play-btn svg{width:22px;height:22px}.eq-bars{inset:-30px;gap:2px}.eq-bar{width:2px}
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="fluid a"></div><div class="fluid b"></div><div class="fluid c"></div>
+  <div class="vignette"></div><div class="grain"></div>
+
+  <div id="biliContainer"><iframe id="biliPlayer" src="" allow="autoplay" allowfullscreen></iframe></div>
+
+  <div class="card">
+    <div class="header">
+      <div class="hl">
+        <div class="station-name">Francis Jazz FM</div>
+        <div class="theme-tag" id="themeTag">经典爵士标准曲</div>
+      </div>
+      <div style="text-align:right">
+        <div class="live-badge"><span class="live-dot"></span> On Air</div>
+        <div class="clock" id="clock">00:00</div>
+      </div>
+    </div>
+
+    <div class="player-area">
+      <div class="disc-wrap">
+        <div class="ring"></div><div class="ring r2"></div>
+        <div class="eq-bars" id="eqBars"></div>
+        <div class="disc" id="disc"><div class="disc-hole"></div></div>
+      </div>
+      <div class="track-info">
+        <div class="track-title" id="trackTitle">点击播放</div>
+        <div class="track-artist" id="trackArtist"></div>
+        <div class="dj-ind" id="djInd"><span class="md"></span><span id="djLabel">Francis 正在介绍...</span></div>
+        <div class="ad-badge" id="adBadge">&#9835; 广告时间</div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="progress-row">
+        <span id="timeElapsed">00:00</span>
+        <div class="progress-bar" id="progressBar"><div class="progress-fill" id="progressFill"></div></div>
+        <span id="timeTotal">--:--</span>
+      </div>
+      <div class="btn-row">
+        <button class="skip-btn" id="prevBtn" aria-label="上一首">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+        </button>
+        <button class="play-btn" id="playBtn" aria-label="播放">
+          <svg id="iconPlay" viewBox="0 0 24 24" fill="currentColor"><polygon points="8,5 20,12 8,19"/></svg>
+          <svg id="iconPause" viewBox="0 0 24 24" fill="currentColor" style="display:none">
+            <rect x="5" y="4" width="5" height="16" rx="1.5"/><rect x="14" y="4" width="5" height="16" rx="1.5"/></svg>
+        </button>
+        <button class="skip-btn" id="nextBtn" aria-label="下一首">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+        </button>
+      </div>
+      <div class="info-row"><span id="infoText">周一 · 经典爵士标准曲</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+// ═══════════════════════════════════════
+// 7-DAY THEME PLAYLISTS
+// ═══════════════════════════════════════
+const DAYS = ['sun','mon','tue','wed','thu','fri','sat'];
+const DAY_NAMES = ['周日','周一','周二','周三','周四','周五','周六'];
+
+const THEMES = {
+  mon: {
+    name: '经典爵士标准曲',
+    desc: '从 Ella 到 Sinatra，最纯正的 Standards',
+    videos: [
+      {title:'爵士标准曲 Autumn Leaves 歌单',artist:'100分钟经典标准曲精选',bvid:'BV1A54y1k76C',dur:6019},
+      {title:'一小时 Ella Fitzgerald',artist:'爵士第一夫人精选',bvid:'BV1VES1BrEsk',dur:3462},
+      {title:'Ella Fitzgerald · 黑胶唱片',artist:'Mack The Knife · Ella In Berlin',bvid:'BV1YapSeyEgv',dur:2214},
+      {title:'爵士标准曲探源',artist:'The Real Book · Jazz Standards',bvid:'BV1r45vzQEJR',dur:5835},
+      {title:'爵士女王 Ella Fitzgerald',artist:'Playlist 精选',bvid:'BV1mt421K7Jv',dur:3083},
+      {title:'经典爵士精选',artist:'Nat King Cole · Sinatra · Sarah Vaughan',bvid:'BV1aKu4ziEei',dur:3543},
+    ]
+  },
+  tue: {
+    name: '酷爵士与西海岸',
+    desc: '冷静优雅的 Cool Jazz 之夜',
+    videos: [
+      {title:'Mundell Lowe · Cool Jazz',artist:'A Grand Night For Swinging',bvid:'BV1EK411B7UX',dur:2401},
+      {title:'西海岸落日酒馆',artist:'无人声冷爵士 · Cool Jazz',bvid:'BV1Xp4y1P7vd',dur:3367},
+      {title:'日本爵士印象',artist:'环球爵士漫游 · Hi-Res',bvid:'BV1MCdfBWE9m',dur:2088},
+      {title:'Miles Davis · 冷爵士',artist:'Birth Of The Cool · Hi-Res',bvid:'BV1RvCtB5EjR',dur:1969},
+      {title:'爵士慢摇 · 淡酒冰咖',artist:'Swing Dance · 私藏歌单',bvid:'BV1nbcrzBE3p',dur:2004},
+      {title:'Miles Davis · 后波普',artist:'Miles In The Sky · Fusion',bvid:'BV1hhAozuERH',dur:4325},
+    ]
+  },
+  wed: {
+    name: '硬波普与灵魂爵士',
+    desc: 'Blue Note 的黄金年代',
+    videos: [
+      {title:'经典爵士精选',artist:'Nat King Cole · Sinatra',bvid:'BV1aKu4ziEei',dur:3543},
+      {title:'Miles Davis · Kind Of Blue',artist:'调式爵士巅峰 · Hi-Res',bvid:'BV1DCt6zpECu',dur:3333},
+      {title:'Prince 与爵士大师',artist:'Prince · Miles Davis 未发表',bvid:'BV1TTqnBfEkq',dur:2706},
+      {title:'Miles Davis · 冷爵士',artist:'Birth Of The Cool · Hi-Res',bvid:'BV1RvCtB5EjR',dur:1969},
+      {title:'Miles Davis · 后波普',artist:'Miles In The Sky · 先锋爵士',bvid:'BV1hhAozuERH',dur:4325},
+      {title:'融合爵士 · Spyro Gyra',artist:'JAZZ SAN JAVIER 2016',bvid:'BV1XJ411w7TB',dur:5610},
+    ]
+  },
+  thu: {
+    name: '拉丁爵士与世界音乐',
+    desc: 'Bossa Nova · 拉丁 · 环球爵士',
+    videos: [
+      {title:'Spyro Gyra · 融合爵士',artist:'JAZZ SAN JAVIER 2016',bvid:'BV1XJ411w7TB',dur:5610},
+      {title:'王晰的爵士世界',artist:'Jazz & Bossa Nova',bvid:'BV1XkBRYjEqL',dur:971},
+      {title:'越南爵士 · Huong Thanh',artist:'Dragonfly · 世界音乐',bvid:'BV1GV4y1o7gk',dur:3331},
+      {title:'包以正 · 华语爵士',artist:'Eddie Gomez · Chance Enco',bvid:'BV1Z5kVBBE5J',dur:2223},
+      {title:'经典爵士精选',artist:'Nat King Cole · Sinatra · Bossa',bvid:'BV1aKu4ziEei',dur:3543},
+      {title:'西海岸落日酒馆',artist:'Cool Jazz · 轻松拉丁风',bvid:'BV1Xp4y1P7vd',dur:3367},
+    ]
+  },
+  fri: {
+    name: '融合与当代爵士',
+    desc: '电声 · Funk · 跨界 Fusion',
+    videos: [
+      {title:'Miles Davis · 后波普融合',artist:'Miles In The Sky · 先锋',bvid:'BV1hhAozuERH',dur:4325},
+      {title:'Prince 与爵士大师',artist:'Prince · Miles Davis',bvid:'BV1TTqnBfEkq',dur:2706},
+      {title:'Spyro Gyra · 融合爵士',artist:'JAZZ SAN JAVIER',bvid:'BV1XJ411w7TB',dur:5610},
+      {title:'越南爵士 · Huong Thanh',artist:'Dragonfly · 当代融合',bvid:'BV1GV4y1o7gk',dur:3331},
+      {title:'包以正 · 华语爵士',artist:'Eddie Gomez · 融合',bvid:'BV1Z5kVBBE5J',dur:2223},
+      {title:'Miles Davis · 冷爵士',artist:'Birth Of The Cool',bvid:'BV1RvCtB5EjR',dur:1969},
+    ]
+  },
+  sat: {
+    name: '周末慵懒时光',
+    desc: '咖啡 · 沙发 · 慢节奏',
+    videos: [
+      {title:'极致舒缓爵士',artist:'Soft Swing Jazz · 微醺咖啡馆 ☕',bvid:'BV1YbRzBMED5',dur:7042},
+      {title:'咖啡馆慢爵士',artist:'学习 · 工作 · 放松',bvid:'BV1GvYxzcEoo',dur:3388},
+      {title:'Rainy Jazz · 雨夜咖啡',artist:'慢节奏爵士 · 窗外夜景',bvid:'BV1crYLzjEV8',dur:2716},
+      {title:'繁花露台午后咖啡馆',artist:'慢节奏 Jazz · 轻爵士',bvid:'BV11DRuBrERg',dur:2512},
+      {title:'Lo-fi Jazz · 群岛珍藏',artist:'暂别忙碌 · 充电时间',bvid:'BV1DeRxB4EEH',dur:2016},
+      {title:'西海岸落日酒馆',artist:'Cool Jazz · 精神放松',bvid:'BV1Xp4y1P7vd',dur:3367},
+    ]
+  },
+  sun: {
+    name: '爵士传奇之夜',
+    desc: 'Miles · Coltrane · Evans · Monk',
+    videos: [
+      {title:'Miles Davis · Kind Of Blue',artist:'调式爵士巅峰 · 1959',bvid:'BV1DCt6zpECu',dur:3333},
+      {title:'Prince 与 Miles Davis',artist:'未发表专辑 · 1989',bvid:'BV1TTqnBfEkq',dur:2706},
+      {title:'Miles Davis In The Sky',artist:'后波普 · 融合先锋',bvid:'BV1hhAozuERH',dur:4325},
+      {title:'Miles Davis · Kind Of Blue',artist:'Hi-Res · 24/192',bvid:'BV1pqfmYFELd',dur:2727},
+      {title:'Miles Davis · 冷爵士',artist:'Birth Of The Cool · Hi-Res',bvid:'BV1RvCtB5EjR',dur:1969},
+      {title:'经典爵士精选',artist:'Nat King Cole · Sinatra · 传奇',bvid:'BV1aKu4ziEei',dur:3543},
+    ]
+  }
+};
+
+// ═══════════════════ STATE ═══════════════════
+let dayKey, theme, currentVidIdx = 0, isPlaying = false, isDJSpeaking = false;
+let trackStartTime = 0, progressTimer = null, nextTimer = null;
+let introAudio = null, adAudio = null, hasInteracted = false;
+
+// DOM
+const biliPlayer = document.getElementById('biliPlayer');
+const playBtn = document.getElementById('playBtn');
+const iconPlay = document.getElementById('iconPlay');
+const iconPause = document.getElementById('iconPause');
+const progressFill = document.getElementById('progressFill');
+const timeEl = document.getElementById('timeElapsed');
+const timeTotal = document.getElementById('timeTotal');
+const trackTitle = document.getElementById('trackTitle');
+const trackArtist = document.getElementById('trackArtist');
+const djInd = document.getElementById('djInd');
+const djLabel = document.getElementById('djLabel');
+const adBadge = document.getElementById('adBadge');
+const disc = document.getElementById('disc');
+const eqBars = document.getElementById('eqBars');
+const progressBar = document.getElementById('progressBar');
+const nextBtn = document.getElementById('nextBtn');
+const prevBtn = document.getElementById('prevBtn');
+const themeTag = document.getElementById('themeTag');
+const clockEl = document.getElementById('clock');
+const infoText = document.getElementById('infoText');
+
+function mmss(sec){
+  const s=Math.max(0,Math.floor(sec));
+  return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+}
+
+function getVideo(){
+  const vids = theme.videos;
+  return vids[((currentVidIdx%vids.length)+vids.length)%vids.length];
+}
+
+function initDay(){
+  const d = new Date();
+  dayKey = DAYS[d.getDay()];
+  theme = THEMES[dayKey];
+  themeTag.textContent = theme.name + ' · ' + theme.desc;
+  infoText.textContent = DAY_NAMES[d.getDay()] + ' · ' + theme.name;
+  currentVidIdx = 0;
+  updateTrackDisplay(getVideo());
+}
+
+function updateClock(){
+  const now = new Date();
+  clockEl.textContent = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+}
+updateClock();
+setInterval(updateClock, 30000);
+
+function updateTrackDisplay(v){
+  trackTitle.textContent = v.title;
+  trackArtist.textContent = v.artist;
+  document.title = `${theme.name} — Francis Jazz FM`;
+  timeTotal.textContent = mmss(v.dur);
+}
+
+// ── B站 ──
+function playBili(bvid){ biliPlayer.src = `https://player.bilibili.com/player.html?bvid=${bvid}&autoplay=1&high_quality=1&danmaku=0&muted=0`; }
+function stopBili(){ biliPlayer.src = ''; }
+
+// Try to control B站 player volume via postMessage
+function setBiliVolume(vol){ // vol: 0.0 - 1.0
+  try {
+    biliPlayer.contentWindow.postMessage({type:'setVolume',value:vol*100},'*');
+    biliPlayer.contentWindow.postMessage({type:'volume',value:vol*100},'*');
+    biliPlayer.contentWindow.postMessage(JSON.stringify({cmd:'set_volume',volume:vol*100}),'*');
+  } catch(_){}
+}
+
+function duckBili(){ setBiliVolume(0.18); }
+function restoreBili(){ setBiliVolume(1.0); }
+
+// ── Audio player ──
+function playAudioFile(src, onEnd){
+  const a = new Audio();
+  a.src = src;
+  a.volume = 1.0;
+  a.addEventListener('ended', () => { onEnd(); a.remove(); });
+  a.addEventListener('error', () => { setTimeout(onEnd, 1500); a.remove(); });
+  a.play().catch(() => setTimeout(onEnd, 1500));
+  return a;
+}
+
+// ── Play Sequence ──
+// Flow: [Theme Intro] → [Track 1] → [Ad] → [Track 2] → [Track 3] → [Ad] → [Track 4] → [Track 5] → [Ad] → [Track 6] → [Loop]
+// Ads inserted after tracks 1, 3, and 5 (every 2-3 songs)
+
+function startSequence(){
+  if(!isPlaying) return;
+  currentVidIdx = 0;
+  playThemeIntro();
+}
+
+function playThemeIntro(){
+  if(!isPlaying) return;
+  isDJSpeaking = true;
+  djInd.classList.add('active');
+  djLabel.textContent = 'Francis · 今日主题';
+  adBadge.classList.remove('active');
+  duckBili();
+
+  introAudio = playAudioFile(`audio/theme-${dayKey}.mp3`, () => {
+    isDJSpeaking = false;
+    djInd.classList.remove('active');
+    restoreBili();
+    if(!isPlaying) return;
+    playCurrentVideo();
+  });
+}
+
+function playCurrentVideo(){
+  if(!isPlaying) return;
+  const v = getVideo();
+  updateTrackDisplay(v);
+  djInd.classList.remove('active');
+  adBadge.classList.remove('active');
+  disc.classList.add('playing');
+
+  playBili(v.bvid);
+  trackStartTime = Date.now();
+  updateProgressUI();
+  scheduleNext();
+}
+
+function playAd(){
+  if(!isPlaying) return;
+  isDJSpeaking = true;
+  adBadge.classList.add('active');
+  djInd.classList.remove('active');
+  disc.classList.add('playing');
+  duckBili();
+
+  const adIdx = currentVidIdx % 4;
+  adAudio = playAudioFile(`audio/ad-${adIdx}.mp3`, () => {
+    isDJSpeaking = false;
+    adBadge.classList.remove('active');
+    restoreBili();
+    if(!isPlaying) return;
+    playCurrentVideo();
+  });
+}
+
+function playTransition(){
+  if(!isPlaying) return;
+  isDJSpeaking = true;
+  djInd.classList.add('active');
+  djLabel.textContent = 'Francis';
+  adBadge.classList.remove('active');
+  disc.classList.add('playing');
+  duckBili();
+
+  const tIdx = currentVidIdx % 8;
+  introAudio = playAudioFile(`audio/trans-${tIdx}.mp3`, () => {
+    isDJSpeaking = false;
+    djInd.classList.remove('active');
+    restoreBili();
+    if(!isPlaying) return;
+    playCurrentVideo();
+  });
+}
+
+function scheduleNext(){
+  if(nextTimer) clearTimeout(nextTimer);
+  const v = getVideo();
+  const elapsed = (Date.now() - trackStartTime)/1000;
+  const remaining = Math.max(5, v.dur - elapsed);
+  nextTimer = setTimeout(() => {
+    if(!isPlaying) return;
+    currentVidIdx++;
+
+    // Reset to start of day when all videos played
+    if(currentVidIdx >= theme.videos.length) currentVidIdx = 0;
+
+    // Insert ad after videos 1,3,5; transition after 2,4; theme replay at loop
+    const idx = currentVidIdx % theme.videos.length;
+    if(idx === 0) playThemeIntro();
+    else if(idx === 1 || idx === 3 || idx === 5) playAd();
+    else playTransition();
+  }, remaining*1000);
+}
+
+function updateProgressUI(){
+  const v = getVideo();
+  const elapsed = (Date.now() - trackStartTime)/1000;
+  const pct = Math.min(100, (elapsed/v.dur)*100);
+  progressFill.style.width = pct+'%';
+  timeEl.textContent = mmss(Math.min(elapsed, v.dur));
+  timeTotal.textContent = mmss(v.dur);
+}
+
+// ── Controls ──
+function play(){
+  isPlaying = true;
+  iconPlay.style.display='none';iconPause.style.display='';
+  playBtn.setAttribute('aria-label','暂停');
+  if(!progressTimer) progressTimer = setInterval(updateProgressUI, 300);
+  initDay();
+  startSequence();
+}
+
+function pause(){
+  isPlaying = false;
+  iconPlay.style.display='';iconPause.style.display='none';
+  playBtn.setAttribute('aria-label','播放');
+  if(progressTimer){clearInterval(progressTimer);progressTimer=null}
+  if(nextTimer){clearTimeout(nextTimer);nextTimer=null}
+  stopBili();
+  if(introAudio){introAudio.pause();introAudio.src=''}
+  if(adAudio){adAudio.pause();adAudio.src=''}
+  isDJSpeaking=false;
+  djInd.classList.remove('active');
+  adBadge.classList.remove('active');
+  disc.classList.remove('playing');
+  restoreBili();
+}
+
+playBtn.addEventListener('click',()=>{hasInteracted=true;isPlaying?pause():play()});
+
+nextBtn.addEventListener('click',()=>{
+  if(nextTimer)clearTimeout(nextTimer);
+  currentVidIdx++;
+  if(currentVidIdx >= theme.videos.length) currentVidIdx = 0;
+  if(isPlaying){
+    if(introAudio){introAudio.pause();introAudio.src=''}if(adAudio){adAudio.pause();adAudio.src=''}
+    isDJSpeaking=false;djInd.classList.remove('active');adBadge.classList.remove('active');
+    playCurrentVideo();
+  } else updateTrackDisplay(getVideo());
+});
+
+prevBtn.addEventListener('click',()=>{
+  if(nextTimer)clearTimeout(nextTimer);
+  currentVidIdx--;
+  if(currentVidIdx < 0) currentVidIdx = theme.videos.length - 1;
+  if(isPlaying){
+    if(introAudio){introAudio.pause();introAudio.src=''}if(adAudio){adAudio.pause();adAudio.src=''}
+    isDJSpeaking=false;djInd.classList.remove('active');adBadge.classList.remove('active');
+    playCurrentVideo();
+  } else updateTrackDisplay(getVideo());
+});
+
+progressBar.addEventListener('click',(e)=>{
+  const rect = progressBar.getBoundingClientRect();
+  const pct = (e.clientX - rect.left)/rect.width;
+  const v = getVideo();
+  trackStartTime = Date.now() - (pct*v.dur*1000);
+  if(nextTimer){clearTimeout(nextTimer);nextTimer=null}
+  scheduleNext();
+});
+
+document.addEventListener('keydown',(e)=>{
+  if(e.target.tagName==='INPUT')return;
+  switch(e.code){
+    case'Space':e.preventDefault();hasInteracted=true;isPlaying?pause():play();break;
+    case'ArrowRight':e.preventDefault();nextBtn.click();break;
+    case'ArrowLeft':e.preventDefault();prevBtn.click();break;
+  }
+});
+
+// ── Eq bars ──
+(function buildEq(){
+  let h='';
+  for(let i=0;i<12;i++){h+=`<div class="eq-bar" style="height:${10+Math.random()*50}px;animation-delay:${(Math.random()*.4).toFixed(2)}s"></div>`}
+  eqBars.innerHTML=h;
+})();
+
+// ── Autoplay ──
+function tryAuto(){if(isPlaying){cleanup();return}cleanup();hasInteracted=true;play()}
+function cleanup(){window.removeEventListener('pointerdown',tryAuto);window.removeEventListener('keydown',tryAuto);window.removeEventListener('touchstart',tryAuto)}
+window.addEventListener('pointerdown',tryAuto);window.addEventListener('keydown',tryAuto);window.addEventListener('touchstart',tryAuto);
+setTimeout(()=>{if(!hasInteracted&&!isPlaying)play()},800);
+
+window.addEventListener('beforeunload',()=>{if(introAudio)introAudio.pause();if(adAudio)adAudio.pause()});
+
+// ── Init ──
+initDay();
+
+console.log('%c Jazz FM 24/7 %c— %c七日主题 · '+DAY_NAMES[new Date().getDay()]+' · '+theme.name+' %c',
+  'color:#e8b84b;font-size:20px;','color:#a09888;font-size:10px;','color:#d4983c;font-size:12px;','');
+console.log('全自动 24/7 · 每日不同主题 · 广告插播 · 云希语音');
+})();
+</script>
+</body>
+</html>
