@@ -207,7 +207,7 @@
         <div class="theme-tag" id="themeTag">经典爵士标准曲</div>
       </div>
       <div style="text-align:right">
-        <div class="live-badge"><span class="live-dot"></span> On Air</div>
+        <div class="live-badge"><span class="live-dot"></span> <span id="modeLabel">On Air</span></div>
         <div class="clock" id="clock">00:00</div>
       </div>
     </div>
@@ -357,6 +357,9 @@ const biliPlayer = document.getElementById('biliPlayer');
 const audioPlayer = document.getElementById('audioPlayer');
 const isLocalProxy = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.');
 const isDeployed = !isLocalProxy;
+// Show mode indicator
+document.getElementById('modeLabel').textContent = isDeployed ? 'On Air' : 'On Air · HiFi';
+if(!isDeployed) document.getElementById('modeLabel').style.color = '#e8b84b';
 const playBtn = document.getElementById('playBtn');
 const iconPlay = document.getElementById('iconPlay');
 const iconPause = document.getElementById('iconPause');
@@ -462,25 +465,13 @@ function stopBili(){
 }
 
 function duckBili(){
-  if(isDeployed) return; // Can't control iframe volume
-  let v = audioPlayer.volume;
-  const step = () => {
-    v = Math.max(0.12, v - 0.06);
-    audioPlayer.volume = v;
-    if(v > 0.12) requestAnimationFrame(step);
-  };
-  step();
+  if(isDeployed) return;
+  audioPlayer.volume = 0.15;
 }
 
 function restoreBili(){
   if(isDeployed) return;
-  let v = audioPlayer.volume;
-  const step = () => {
-    v = Math.min(1.0, v + 0.06);
-    audioPlayer.volume = v;
-    if(v < 1.0) requestAnimationFrame(step);
-  };
-  step();
+  audioPlayer.volume = 1.0;
 }
 
 // ── Audio player ──
