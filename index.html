@@ -195,7 +195,10 @@
   <div class="fluid a"></div><div class="fluid b"></div><div class="fluid c"></div>
   <div class="vignette"></div><div class="grain"></div>
 
-  <div id="biliContainer"><iframe id="biliPlayer" src="" allow="autoplay" allowfullscreen></iframe></div>
+  <div id="biliContainer">
+    <iframe id="biliPlayer" src="" allow="autoplay" allowfullscreen style="display:none"></iframe>
+    <audio id="audioPlayer" preload="none" crossorigin="anonymous"></audio>
+  </div>
 
   <div class="card">
     <div class="header">
@@ -351,6 +354,9 @@ let introAudio = null, adAudio = null, hasInteracted = false;
 
 // DOM
 const biliPlayer = document.getElementById('biliPlayer');
+const audioPlayer = document.getElementById('audioPlayer');
+const isLocalProxy = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.');
+const isDeployed = !isLocalProxy;
 const playBtn = document.getElementById('playBtn');
 const iconPlay = document.getElementById('iconPlay');
 const iconPause = document.getElementById('iconPause');
@@ -405,11 +411,77 @@ function updateTrackDisplay(v){
   timeTotal.textContent = mmss(v.dur);
 }
 
-// ── B站 ──
-function playBili(bvid){ biliPlayer.src = `https://player.bilibili.com/player.html?bvid=${bvid}&autoplay=1&high_quality=1&danmaku=0&muted=0`; }
-function stopBili(){ biliPlayer.src = ''; }
-// Note: B站 iframe doesn't allow external volume control — music plays at full volume throughout.
-// Francis's voice is layered on top, just like a real radio DJ talking over the music.
+// ── B站 Audio ──
+const CIDS = {
+BV1A54y1k76C:257960138,BV1VES1BrEsk:34424425874,BV1YapSeyEgv:500001654957163,
+BV1r45vzQEJR:29466036889,BV1mt421K7Jv:1552078698,BV1aKu4ziEei:31067081185,
+BV1EK411B7UX:934521762,BV1Xp4y1P7vd:1248853353,BV1MCdfBWE9m:37643616268,
+BV1RvCtB5EjR:33980681281,BV1nbcrzBE3p:36650287895,BV1hhAozuERH:36423206551,
+BV1DCt6zpECu:31553945627,BV1TTqnBfEkq:34816658728,BV1XJ411w7TB:117333211,
+BV1XkBRYjEqL:27059687044,BV1GV4y1o7gk:1107105970,BV1Z5kVBBE5J:35496985570,
+BV1YbRzBMED5:38095750476,BV1GvYxzcEoo:31784305441,BV1crYLzjEV8:32223006416,
+BV11DRuBrERg:38006161593,BV1DeRxB4EEH:38137757763,BV1pqfmYFELd:28110685531,
+BV1WmAoztEkQ:36419732187
+};
+
+function playBili(bvid){
+  if(isDeployed){
+    // GitHub Pages: use iframe (no volume control but music works)
+    audioPlayer.style.display='none';
+    biliPlayer.style.display='';
+    biliPlayer.src = `https://player.bilibili.com/player.html?bvid=${bvid}&autoplay=1&high_quality=1&danmaku=0&muted=0`;
+  } else {
+    // Local proxy: fetch via our server, play via <audio> with real volume control
+    const cid = CIDS[bvid];
+    if(!cid){ fallbackIframe(bvid); return; }
+
+    fetch(`/api/bili/playurl?bvid=${bvid}&cid=${cid}`)
+      .then(r=>r.json())
+      .then(data=>{
+        if(!data.url){ fallbackIframe(bvid); return; }
+        biliPlayer.style.display='none';
+        audioPlayer.style.display='';
+        audioPlayer.src = `/api/bili/stream?url=${encodeURIComponent(data.url)}`;
+        audioPlayer.volume = isDJSpeaking ? 0.15 : 1.0;
+        audioPlayer.play().catch(()=>{});
+      })
+      .catch(()=>{ fallbackIframe(bvid); });
+  }
+}
+
+function fallbackIframe(bvid){
+  audioPlayer.style.display='none';
+  biliPlayer.style.display='';
+  biliPlayer.src = `https://player.bilibili.com/player.html?bvid=${bvid}&autoplay=1&high_quality=1&danmaku=0&muted=0`;
+}
+
+function stopBili(){
+  biliPlayer.src = '';
+  audioPlayer.pause();
+  audioPlayer.src = '';
+}
+
+function duckBili(){
+  if(isDeployed) return; // Can't control iframe volume
+  let v = audioPlayer.volume;
+  const step = () => {
+    v = Math.max(0.12, v - 0.06);
+    audioPlayer.volume = v;
+    if(v > 0.12) requestAnimationFrame(step);
+  };
+  step();
+}
+
+function restoreBili(){
+  if(isDeployed) return;
+  let v = audioPlayer.volume;
+  const step = () => {
+    v = Math.min(1.0, v + 0.06);
+    audioPlayer.volume = v;
+    if(v < 1.0) requestAnimationFrame(step);
+  };
+  step();
+}
 
 // ── Audio player ──
 function playAudioFile(src, onEnd){
@@ -438,10 +510,12 @@ function playThemeIntro(){
   djInd.classList.add('active');
   djLabel.textContent = 'Francis · 今日主题';
   adBadge.classList.remove('active');
+  duckBili();
 
   introAudio = playAudioFile(`audio/theme-${dayKey}.mp3`, () => {
     isDJSpeaking = false;
     djInd.classList.remove('active');
+    restoreBili();
     if(!isPlaying) return;
     playCurrentVideo();
   });
@@ -467,11 +541,13 @@ function playAd(){
   adBadge.classList.add('active');
   djInd.classList.remove('active');
   disc.classList.add('playing');
+  duckBili();
 
   const adIdx = currentVidIdx % 4;
   adAudio = playAudioFile(`audio/ad-${adIdx}.mp3`, () => {
     isDJSpeaking = false;
     adBadge.classList.remove('active');
+    restoreBili();
     if(!isPlaying) return;
     playCurrentVideo();
   });
@@ -484,11 +560,13 @@ function playTransition(){
   djLabel.textContent = 'Francis';
   adBadge.classList.remove('active');
   disc.classList.add('playing');
+  duckBili();
 
   const tIdx = currentVidIdx % 8;
   introAudio = playAudioFile(`audio/trans-${tIdx}.mp3`, () => {
     isDJSpeaking = false;
     djInd.classList.remove('active');
+    restoreBili();
     if(!isPlaying) return;
     playCurrentVideo();
   });
