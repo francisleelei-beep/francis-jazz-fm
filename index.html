@@ -409,18 +409,59 @@ function updateTrackDisplay(v){
 
 // ── B站 ──
 const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent) || window.innerWidth < 600;
+let mobileAudio = null; // <audio> element for mobile playback
 let mobileBvidPending = null;
 let mobileFirstPlayDone = false;
+
+const MOBILE_CIDS = {
+BV1A54y1k76C:257960138,BV1VES1BrEsk:34424425874,BV1YapSeyEgv:500001654957163,
+BV1r45vzQEJR:29466036889,BV1mt421K7Jv:1552078698,BV1aKu4ziEei:31067081185,
+BV1EK411B7UX:934521762,BV1Xp4y1P7vd:1248853353,BV1MCdfBWE9m:37643616268,
+BV1RvCtB5EjR:33980681281,BV1nbcrzBE3p:36650287895,BV1hhAozuERH:36423206551,
+BV1DCt6zpECu:31553945627,BV1TTqnBfEkq:34816658728,BV1XJ411w7TB:117333211,
+BV1XkBRYjEqL:27059687044,BV1GV4y1o7gk:1107105970,BV1Z5kVBBE5J:35496985570,
+BV1YbRzBMED5:38095750476,BV1GvYxzcEoo:31784305441,BV1crYLzjEV8:32223006416,
+BV11DRuBrERg:38006161593,BV1DeRxB4EEH:38137757763,BV1pqfmYFELd:28110685531,
+BV1WmAoztEkQ:36419732187
+};
+
+// Mobile: fetch B站 audio URL via proxy, play via <audio>
+async function playBiliMobile(bvid){
+  const cid = MOBILE_CIDS[bvid];
+  if(!cid) return false;
+  try {
+    // Try local proxy first
+    const apiBase = window.location.hostname === 'localhost' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.')
+      ? window.location.origin : 'https://francisleelei-beep.github.io/francis-jazz-fm';
+
+    // B站 API doesn't have CORS — must use proxy or fallback
+    const resp = await fetch(`https://api.bilibili.com/x/player/playurl?bvid=${bvid}&cid=${cid}&fnval=1&qn=0&platform=html5`, {
+      headers: {'Referer':'https://www.bilibili.com'}
+    });
+    const data = await resp.json();
+    const url = data?.data?.durl?.[0]?.url;
+    if(!url) return false;
+
+    if(!mobileAudio){
+      mobileAudio = new Audio();
+      mobileAudio.crossOrigin = 'anonymous';
+    }
+    mobileAudio.src = url;
+    mobileAudio.volume = 1.0;
+    await mobileAudio.play();
+    return true;
+  } catch(e){
+    return false;
+  }
+}
 
 function playBili(bvid){
   if(isMobile){
     if(!mobileFirstPlayDone){
-      // First play on mobile: needs user gesture, show tap prompt
       mobileBvidPending = bvid;
       showMobilePlayPrompt();
     }
-    // After first play: keep same iframe, don't change src
-    // B站 auto-plays next video when one ends
+    // After first play: keep same audio stream, don't switch
   } else {
     biliPlayer.src = `https://player.bilibili.com/player.html?bvid=${bvid}&autoplay=1&high_quality=1&danmaku=0&muted=0`;
   }
@@ -441,13 +482,18 @@ function showMobilePlayPrompt(){
     </div>`;
 }
 
-function triggerMobilePlay(){
+async function triggerMobilePlay(){
   document.getElementById('overlayContainer').innerHTML = '';
-  if(mobileBvidPending){
+  if(!mobileBvidPending) return;
+
+  const success = await playBiliMobile(mobileBvidPending);
+  if(!success){
+    // Absolute fallback: try iframe
     biliPlayer.src = `https://player.bilibili.com/player.html?bvid=${mobileBvidPending}&autoplay=1&high_quality=1&danmaku=0&muted=0&playsinline=1`;
-    mobileBvidPending = null;
-    mobileFirstPlayDone = true;
   }
+
+  mobileBvidPending = null;
+  mobileFirstPlayDone = true;
   trackStartTime = Date.now();
   updateProgressUI();
   scheduleNext();
@@ -455,6 +501,7 @@ function triggerMobilePlay(){
 
 function stopBili(){
   biliPlayer.src = '';
+  if(mobileAudio){ mobileAudio.pause(); mobileAudio.src = ''; }
   mobileBvidPending = null;
   mobileFirstPlayDone = false;
 }
