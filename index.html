@@ -403,19 +403,35 @@ function updateTrackDisplay(v){
 }
 
 // ── B站 ──
-// ═══════════════════ JAZZ RADIO STREAM ═══════════════════
-// Railway server relays the stream — no network restrictions, works everywhere
+// ═══════════════════ JAZZ RADIO STREAMS ═══════════════════
+const JAZZ_STREAMS = [
+  'https://icecast.radiofrance.fr/fipjazz-midfi.mp3',
+  'https://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3',
+  'https://jazz.streamr.ru/jazz-64.mp3',
+];
+
 let streamAudio = null;
+let currentStreamIdx = 0;
 
 function startStream(){
   if(!streamAudio){
     streamAudio = new Audio();
     streamAudio.crossOrigin = 'anonymous';
+    streamAudio.addEventListener('error', tryNextStream);
+    streamAudio.addEventListener('ended', tryNextStream);
   }
-  // Use server relay — always accessible, regardless of client network
-  streamAudio.src = '/api/stream';
+  currentStreamIdx = 0;
+  streamAudio.src = JAZZ_STREAMS[0];
   streamAudio.volume = 1.0;
-  streamAudio.play().catch(()=>{});
+  streamAudio.play().catch(tryNextStream);
+}
+
+function tryNextStream(){
+  currentStreamIdx++;
+  if(currentStreamIdx < JAZZ_STREAMS.length && streamAudio){
+    streamAudio.src = JAZZ_STREAMS[currentStreamIdx];
+    streamAudio.play().catch(tryNextStream);
+  }
 }
 
 function stopBili(){
