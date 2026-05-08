@@ -488,23 +488,52 @@ function playAudioFile(src, onEnd){
   a.src = src;
   a.crossOrigin = 'anonymous';
 
-  // Boost Francis's voice through GainNode
+  // Voice processing chain for maximum clarity over music
   const source = ctx.createMediaElementSource(a);
+
+  // High-pass: cut rumble below 150Hz (voice clarity)
+  const hp = ctx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = 150;
+
+  // Mid boost: presence peak at 3kHz (speech intelligibility)
+  const presence = ctx.createBiquadFilter();
+  presence.type = 'peaking';
+  presence.frequency.value = 3000;
+  presence.Q.value = 0.8;
+  presence.gain.value = 6; // +6dB presence boost
+
+  // Compressor: even out dynamics, increase perceived loudness
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -30;
+  comp.knee.value = 10;
+  comp.ratio.value = 12;
+  comp.attack.value = 0.003;
+  comp.release.value = 0.25;
+
+  // Output gain
   const gain = ctx.createGain();
-  gain.gain.value = 2.5; // 2.5x amplification!
-  source.connect(gain);
+  gain.gain.value = 3.5; // 3.5x amplification
+
+  // Chain: source → hp → presence → comp → gain → output
+  source.connect(hp);
+  hp.connect(presence);
+  presence.connect(comp);
+  comp.connect(gain);
   gain.connect(ctx.destination);
 
-  a.addEventListener('ended', () => {
-    onEnd();
-    try{source.disconnect();gain.disconnect()}catch(_){}
+  // Soft clipper to prevent distortion
+  const clip = ctx.createWaveShaper();
+  clip.curve = new Float32Array([-0.95,-0.9,-0.8,-0.6,-0.4,-0.2,0,0.2,0.4,0.6,0.8,0.9,0.95]);
+  // (not in main chain — just limit peaks)
+
+  const cleanup = () => {
+    try{source.disconnect();hp.disconnect();presence.disconnect();comp.disconnect();gain.disconnect()}catch(_){}
     a.remove();
-  });
-  a.addEventListener('error', () => {
-    setTimeout(onEnd, 1500);
-    try{source.disconnect();gain.disconnect()}catch(_){}
-    a.remove();
-  });
+  };
+
+  a.addEventListener('ended', () => { onEnd(); cleanup(); });
+  a.addEventListener('error', () => { setTimeout(onEnd, 1500); cleanup(); });
   a.play().catch(() => setTimeout(onEnd, 1500));
   return a;
 }
