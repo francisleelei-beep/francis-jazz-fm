@@ -403,36 +403,70 @@ function updateTrackDisplay(v){
 }
 
 // ── B站 ──
-// ═══════════════════ JAZZ RADIO STREAMS ═══════════════════
-const JAZZ_STREAMS = [
-  'https://icecast.radiofrance.fr/fipjazz-midfi.mp3',
-  'https://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3',
-  'https://jazz.streamr.ru/jazz-64.mp3',
-];
+// ═══════════════════ B站 AUDIO (via Railway proxy) ═══════════════════
+const BILI_CIDS = {
+BV1A54y1k76C:257960138,BV1VES1BrEsk:34424425874,BV1YapSeyEgv:500001654957163,
+BV1r45vzQEJR:29466036889,BV1mt421K7Jv:1552078698,BV1aKu4ziEei:31067081185,
+BV1EK411B7UX:934521762,BV1Xp4y1P7vd:1248853353,BV1MCdfBWE9m:37643616268,
+BV1RvCtB5EjR:33980681281,BV1nbcrzBE3p:36650287895,BV1hhAozuERH:36423206551,
+BV1DCt6zpECu:31553945627,BV1TTqnBfEkq:34816658728,BV1XJ411w7TB:117333211,
+BV1XkBRYjEqL:27059687044,BV1GV4y1o7gk:1107105970,BV1Z5kVBBE5J:35496985570,
+BV1YbRzBMED5:38095750476,BV1GvYxzcEoo:31784305441,BV1crYLzjEV8:32223006416,
+BV11DRuBrERg:38006161593,BV1DeRxB4EEH:38137757763,BV1pqfmYFELd:28110685531,
+BV1WmAoztEkQ:36419732187
+};
 
 let streamAudio = null;
-let currentStreamIdx = 0;
 
-function startStream(){
+async function startStream(){
   if(!streamAudio){
     streamAudio = new Audio();
     streamAudio.crossOrigin = 'anonymous';
-    streamAudio.addEventListener('error', tryNextStream);
-    streamAudio.addEventListener('ended', tryNextStream);
   }
-  currentStreamIdx = 0;
-  streamAudio.src = JAZZ_STREAMS[0];
-  streamAudio.volume = 1.0;
-  streamAudio.play().catch(tryNextStream);
+  // Get fresh B站 MP4 URL via Railway proxy (no CORS)
+  const dayVideos = theme.videos;
+  if(dayVideos.length > 0){
+    const bvid = dayVideos[0].bvid;
+    const cid = BILI_CIDS[bvid];
+    if(cid){
+      try {
+        const resp = await fetch(`/api/bili/playurl?bvid=${bvid}&cid=${cid}`);
+        const data = await resp.json();
+        if(data.url){
+          streamAudio.src = data.url;
+          streamAudio.volume = 1.0;
+          streamAudio.play().catch(()=>{});
+          return;
+        }
+      } catch(e){}
+    }
+  }
+  // Fallback: generated ambient jazz
+  startFallbackJazz();
 }
 
-function tryNextStream(){
-  currentStreamIdx++;
-  if(currentStreamIdx < JAZZ_STREAMS.length && streamAudio){
-    streamAudio.src = JAZZ_STREAMS[currentStreamIdx];
-    streamAudio.play().catch(tryNextStream);
-  }
+function stopBili(){
+  if(streamAudio){ streamAudio.pause(); streamAudio.src = ''; }
+  stopFallbackJazz();
 }
+
+// ═════════════ FALLBACK: Generated ambient jazz ═════════════
+let jazzCtx=null, jazzGain=null, jazzNodes=[];
+function startFallbackJazz(){
+  if(!jazzCtx){ jazzCtx=new(window.AudioContext||window.webkitAudioContext)(); jazzGain=jazzCtx.createGain(); jazzGain.gain.value=0.06; jazzGain.connect(jazzCtx.destination); }
+  if(jazzCtx.state==='suspended') jazzCtx.resume();
+  playJazzLoop();
+}
+const JZ_CH={Dm9:[146.83,220,293.66],G13:[196,293.66,440],Cmaj7:[130.81,196,293.66,164.81],Am7:[110,164.81,220],Fmaj7:[174.61,261.63,329.63],Em7:[164.81,220,293.66],A7:[220,277.18,392],Dmaj7:[146.83,220,293.66,184.99]};
+const JZ_P=[['Dm9','G13','Cmaj7','Cmaj7'],['Am7','Dm9','G13','Cmaj7'],['Em7','A7','Dmaj7','Dmaj7'],['Dm9','G13','Em7','A7']];
+function playJazzLoop(){
+  stopFallbackJazz();
+  const ctx=jazzCtx,now=ctx.currentTime,prog=JZ_P[Math.floor(Math.random()*JZ_P.length)],cd=4,ll=prog.length*cd;
+  for(let c=0;c<prog.length;c++){const f=JZ_CH[prog[c]];if(!f)continue;const t0=now+c*cd,t1=t0+cd+1.5;f.forEach((fr,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=fr;o.detune.value=(Math.random()-.5)*6;const v=.08/(i+1);g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(v,t0+.6);g.gain.setValueAtTime(v,t1-.8);g.gain.linearRampToValueAtTime(0,t1);o.connect(g).connect(jazzGain);o.start(t0);o.stop(t1+.1);jazzNodes.push({o,g})})}
+  for(let c=0;c<prog.length;c++){const f=JZ_CH[prog[c]];if(!f)continue;const r=f[0]/2,t0=now+c*cd;for(let b=0;b<4;b++){const bt=t0+b*.95,n=b===1?r*1.5:b===2?r*2:r,o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=n;g.gain.setValueAtTime(0,bt);g.gain.linearRampToValueAtTime(.04,bt+.03);g.gain.setValueAtTime(.04,bt+.5);g.gain.linearRampToValueAtTime(0,bt+.6);o.connect(g).connect(jazzGain);o.start(bt);o.stop(bt+.7);jazzNodes.push({o,g})}}
+  jazzNodes.loopTimer=setTimeout(playJazzLoop,ll*1000);
+}
+function stopFallbackJazz(){if(jazzNodes.loopTimer)clearTimeout(jazzNodes.loopTimer);jazzNodes.forEach(n=>{try{n.o.stop();n.o.disconnect();n.g.disconnect()}catch(_){}});jazzNodes=[];}
 
 function stopBili(){
   if(streamAudio){ streamAudio.pause(); streamAudio.src = ''; }
