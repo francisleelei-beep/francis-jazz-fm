@@ -474,13 +474,37 @@ function restoreBili(){
   audioPlayer.volume = 1.0;
 }
 
-// ── Audio player ──
+// ── Audio player with voice boost (Web Audio API) ──
+let voiceCtx = null;
+function getVoiceContext(){
+  if(!voiceCtx) voiceCtx = new (window.AudioContext||window.webkitAudioContext)();
+  if(voiceCtx.state === 'suspended') voiceCtx.resume();
+  return voiceCtx;
+}
+
 function playAudioFile(src, onEnd){
+  const ctx = getVoiceContext();
   const a = new Audio();
   a.src = src;
-  a.volume = 1.0;
-  a.addEventListener('ended', () => { onEnd(); a.remove(); });
-  a.addEventListener('error', () => { setTimeout(onEnd, 1500); a.remove(); });
+  a.crossOrigin = 'anonymous';
+
+  // Boost Francis's voice through GainNode
+  const source = ctx.createMediaElementSource(a);
+  const gain = ctx.createGain();
+  gain.gain.value = 2.5; // 2.5x amplification!
+  source.connect(gain);
+  gain.connect(ctx.destination);
+
+  a.addEventListener('ended', () => {
+    onEnd();
+    try{source.disconnect();gain.disconnect()}catch(_){}
+    a.remove();
+  });
+  a.addEventListener('error', () => {
+    setTimeout(onEnd, 1500);
+    try{source.disconnect();gain.disconnect()}catch(_){}
+    a.remove();
+  });
   a.play().catch(() => setTimeout(onEnd, 1500));
   return a;
 }
