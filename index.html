@@ -196,7 +196,7 @@
   <div class="vignette"></div><div class="grain"></div>
 
   <div id="biliContainer">
-    <iframe id="biliPlayer" src="" allow="autoplay" allowfullscreen></iframe>
+    <iframe id="biliPlayer" src="" allow="autoplay" allowfullscreen playsinline webkit-playsinline></iframe>
   </div>
 
   <div class="card">
@@ -408,11 +408,58 @@ function updateTrackDisplay(v){
 }
 
 // ── B站 ──
+const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent) || window.innerWidth < 600;
+let currentBvid = null;
+let mobilePlayPending = false;
+
 function playBili(bvid){
-  biliPlayer.src = `https://player.bilibili.com/player.html?bvid=${bvid}&autoplay=1&high_quality=1&danmaku=0&muted=0`;
+  currentBvid = bvid;
+  if(isMobile){
+    // Mobile: load with muted=0 but may be blocked. Set up tap-to-play fallback.
+    biliPlayer.src = `https://player.bilibili.com/player.html?bvid=${bvid}&autoplay=1&high_quality=1&danmaku=0&muted=0&playsinline=1`;
+    // Auto-detect if playback was blocked, show overlay after 3s
+    mobilePlayPending = true;
+    setTimeout(() => {
+      if(mobilePlayPending && isPlaying) showMobileOverlay();
+    }, 3000);
+  } else {
+    biliPlayer.src = `https://player.bilibili.com/player.html?bvid=${bvid}&autoplay=1&high_quality=1&danmaku=0&muted=0`;
+  }
 }
+
+function showMobileOverlay(){
+  mobilePlayPending = false;
+  // B站 iframe likely blocked by mobile browser — show tap prompt
+  const v = getVideo();
+  const overlay = document.getElementById('overlayContainer');
+  overlay.innerHTML = `
+    <div class="overlay" onclick="retryMobilePlay()" style="background:rgba(0,0,0,.3)">
+      <div class="detail-card" style="border-color:var(--amber)">
+        <div style="font-size:48px;margin-bottom:12px">📻</div>
+        <div class="detail-name-zh">${v.title}</div>
+        <div class="detail-name-en" style="color:var(--amber)">点击继续收听</div>
+        <button class="btn-sound" style="margin-top:16px;background:var(--amber);font-size:18px">▶ 继续播放</button>
+      </div>
+    </div>`;
+}
+
+function retryMobilePlay(){
+  const overlay = document.getElementById('overlayContainer');
+  overlay.innerHTML = '';
+  mobilePlayPending = false;
+  if(currentBvid && isPlaying){
+    // Reload iframe with fresh user gesture context
+    biliPlayer.src = '';
+    setTimeout(() => {
+      biliPlayer.src = `https://player.bilibili.com/player.html?bvid=${currentBvid}&autoplay=1&high_quality=1&danmaku=0&muted=0&playsinline=1`;
+    }, 200);
+  }
+}
+
 function stopBili(){
   biliPlayer.src = '';
+  currentBvid = null;
+  mobilePlayPending = false;
 }
 
 // ── Audio player with voice boost (Web Audio API) ──
