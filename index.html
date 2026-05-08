@@ -531,10 +531,7 @@ function playCurrentVideo(){
   adBadge.classList.remove('active');
   disc.classList.add('playing');
 
-  // Start radio stream if not already playing
-  if(!streamAudio || !streamAudio.src || streamAudio.paused){
-    startStream();
-  }
+  // Stream already started in play() with user gesture
   trackStartTime = Date.now();
   updateProgressUI();
   scheduleNext();
@@ -607,6 +604,8 @@ function play(){
   playBtn.setAttribute('aria-label','暂停');
   if(!progressTimer) progressTimer = setInterval(updateProgressUI, 300);
   initDay();
+  // Start music stream IMMEDIATELY during user gesture (required for mobile)
+  startStream();
   startSequence();
 }
 
