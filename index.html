@@ -56,7 +56,6 @@
   .grain { position:absolute;inset:0;opacity:.03;pointer-events:none;mix-blend-mode:overlay;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='3'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.45 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
 
-  #biliContainer { position:fixed;left:-9999px;top:0;width:0;height:0;opacity:0;pointer-events:none;z-index:-1; }
 
   /* Card */
   .card {
@@ -195,9 +194,6 @@
   <div class="fluid a"></div><div class="fluid b"></div><div class="fluid c"></div>
   <div class="vignette"></div><div class="grain"></div>
 
-  <div id="biliContainer">
-    <iframe id="biliPlayer" src="" allow="autoplay" allowfullscreen playsinline webkit-playsinline></iframe>
-  </div>
 
   <div class="card">
     <div class="header">
@@ -352,7 +348,6 @@ let trackStartTime = 0, progressTimer = null, nextTimer = null;
 let introAudio = null, adAudio = null, hasInteracted = false;
 
 // DOM
-const biliPlayer = document.getElementById('biliPlayer');
 const playBtn = document.getElementById('playBtn');
 const iconPlay = document.getElementById('iconPlay');
 const iconPause = document.getElementById('iconPause');
@@ -408,89 +403,36 @@ function updateTrackDisplay(v){
 }
 
 // ── B站 ──
-const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent) || window.innerWidth < 600;
-let streamAudio = null; // <audio> element for all audio playback
-let bvidPending = null;
-let firstPlayDone = false;
+// ═══════════════════ JAZZ RADIO STREAMS ═══════════════════
+const JAZZ_STREAMS = [
+  'https://icecast.radiofrance.fr/fipjazz-midfi.mp3',   // FIP Jazz (France) — 128kbps
+  'https://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3', // JazzRadio.fr — 192kbps
+  'https://jazz.streamr.ru/jazz-64.mp3',                  // Radio Jazz 89.1FM — 64kbps
+];
 
-const ALL_CIDS = {
-BV1A54y1k76C:257960138,BV1VES1BrEsk:34424425874,BV1YapSeyEgv:500001654957163,
-BV1r45vzQEJR:29466036889,BV1mt421K7Jv:1552078698,BV1aKu4ziEei:31067081185,
-BV1EK411B7UX:934521762,BV1Xp4y1P7vd:1248853353,BV1MCdfBWE9m:37643616268,
-BV1RvCtB5EjR:33980681281,BV1nbcrzBE3p:36650287895,BV1hhAozuERH:36423206551,
-BV1DCt6zpECu:31553945627,BV1TTqnBfEkq:34816658728,BV1XJ411w7TB:117333211,
-BV1XkBRYjEqL:27059687044,BV1GV4y1o7gk:1107105970,BV1Z5kVBBE5J:35496985570,
-BV1YbRzBMED5:38095750476,BV1GvYxzcEoo:31784305441,BV1crYLzjEV8:32223006416,
-BV11DRuBrERg:38006161593,BV1DeRxB4EEH:38137757763,BV1pqfmYFELd:28110685531,
-BV1WmAoztEkQ:36419732187
-};
+let streamAudio = null;
+let streamIdx = 0;
 
-// Unified audio: fetch B站 URL via proxy, play via <audio> on ALL devices
-async function fetchBiliUrl(bvid){
-  const cid = ALL_CIDS[bvid];
-  if(!cid) return null;
-  try {
-    // Always use same-origin proxy (works on local, Railway, wherever server runs)
-    const resp = await fetch(`/api/bili/playurl?bvid=${bvid}&cid=${cid}`);
-    const data = await resp.json();
-    return data.url || null;
-  } catch(e){ return null; }
-}
-
-function playBili(bvid){
-  bvidPending = bvid;
-  if(!firstPlayDone){
-    if(isMobile){
-      showPlayPrompt();
-    } else {
-      // Desktop: auto-play (user already clicked the main play button)
-      triggerPlay();
-    }
+function startStream(){
+  if(!streamAudio){
+    streamAudio = new Audio();
+    streamAudio.crossOrigin = 'anonymous';
+    streamAudio.addEventListener('error', () => {
+      streamIdx++;
+      if(streamIdx < JAZZ_STREAMS.length){
+        streamAudio.src = JAZZ_STREAMS[streamIdx];
+        streamAudio.play().catch(()=>{});
+      }
+    });
   }
-  // After first play: keep same audio stream
-}
-
-function showPlayPrompt(){
-  if(!bvidPending || !isPlaying) return;
-  const v = getVideo();
-  const needTap = isMobile;
-  document.getElementById('overlayContainer').innerHTML = `
-    <div class="overlay" style="background:rgba(8,6,4,0.85);display:flex;align-items:center;justify-content:center" onclick="triggerPlay()">
-      <div class="detail-card" style="border-color:var(--amber);background:#15120e">
-        <div style="font-size:48px;margin-bottom:12px">📻</div>
-        <div class="detail-name-zh" style="color:var(--t1);font-size:20px">${v.title}</div>
-        <div class="detail-name-en" style="color:var(--amber)">Francis Jazz FM</div>
-        <button class="btn-sound" style="margin-top:16px;background:var(--amber);font-size:18px;padding:12px 32px">▶ 点击开始播放</button>
-        ${needTap ? '<div style="font-size:11px;color:var(--t3);margin-top:8px">手机浏览器需要点一下</div>' : ''}
-      </div>
-    </div>`;
-}
-
-async function triggerPlay(){
-  document.getElementById('overlayContainer').innerHTML = '';
-  if(!bvidPending) return;
-
-  const mp4url = await fetchBiliUrl(bvidPending);
-  if(mp4url){
-    if(!streamAudio){
-      streamAudio = new Audio();
-      streamAudio.crossOrigin = 'anonymous';
-    }
-    streamAudio.src = mp4url;
-    streamAudio.volume = 1.0;
-    streamAudio.play().catch(()=>{});
-  }
-  bvidPending = null;
-  firstPlayDone = true;
-  trackStartTime = Date.now();
-  updateProgressUI();
-  scheduleNext();
+  streamIdx = 0;
+  streamAudio.src = JAZZ_STREAMS[0];
+  streamAudio.volume = 1.0;
+  streamAudio.play().catch(()=>{});
 }
 
 function stopBili(){
   if(streamAudio){ streamAudio.pause(); streamAudio.src = ''; }
-  bvidPending = null;
-  firstPlayDone = false;
 }
 
 // ── Audio player with voice boost (Web Audio API) ──
@@ -589,7 +531,10 @@ function playCurrentVideo(){
   adBadge.classList.remove('active');
   disc.classList.add('playing');
 
-  playBili(v.bvid);
+  // Start radio stream if not already playing
+  if(!streamAudio || !streamAudio.src || streamAudio.paused){
+    startStream();
+  }
   trackStartTime = Date.now();
   updateProgressUI();
   scheduleNext();
