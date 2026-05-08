@@ -105,6 +105,36 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
             self.send_error(400, 'Missing url')
             return
 
+        # Relay jazz radio stream (proxy to avoid network restrictions)
+        if parsed.path == '/api/stream':
+            JAZZ_STREAM = 'https://icecast.radiofrance.fr/fipjazz-midfi.mp3'
+            # Fallback streams
+            FALLBACKS = [
+                'https://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3',
+                'https://jazz.streamr.ru/jazz-64.mp3',
+            ]
+            for url in [JAZZ_STREAM] + FALLBACKS:
+                try:
+                    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+                    resp = urllib.request.urlopen(req, timeout=15)
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'audio/mpeg')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.send_header('Cache-Control', 'no-cache')
+                    self.send_header('Connection', 'keep-alive')
+                    self.end_headers()
+                    while True:
+                        chunk = resp.read(32768)
+                        if not chunk: break
+                        try: self.wfile.write(chunk)
+                        except: break
+                    return
+                except Exception as e:
+                    print(f"  Stream failed: {url} -> {e}")
+                    continue
+            self.send_error(502, 'All streams unavailable')
+            return
+
         # Default: serve static files
         super().do_GET()
 
@@ -112,8 +142,10 @@ class ProxyHandler(http.server.SimpleHTTPRequestHandler):
         # Reduce log noise
         if '/api/bili/' in str(args[0]):
             print(f"  [B站 API] {args[0]}")
+        elif '/api/stream' in str(args[0]):
+            print(f"  [Stream] Client connected")
         elif args[0].startswith('GET /audio/'):
-            pass  # Don't log audio file requests
+            pass
         else:
             super().log_message(format, *args)
 
