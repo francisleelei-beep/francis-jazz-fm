@@ -231,9 +231,9 @@
         <button class="skip-btn" id="prevBtn" aria-label="上一首">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
         </button>
-        <button class="play-btn" id="playBtn" aria-label="播放">
-          <svg id="iconPlay" viewBox="0 0 24 24" fill="currentColor"><polygon points="8,5 20,12 8,19"/></svg>
-          <svg id="iconPause" viewBox="0 0 24 24" fill="currentColor" style="display:none">
+        <button class="play-btn" id="playBtn" aria-label="暂停">
+          <svg id="iconPlay" viewBox="0 0 24 24" fill="currentColor" style="display:none"><polygon points="8,5 20,12 8,19"/></svg>
+          <svg id="iconPause" viewBox="0 0 24 24" fill="currentColor">
             <rect x="5" y="4" width="5" height="16" rx="1.5"/><rect x="14" y="4" width="5" height="16" rx="1.5"/></svg>
         </button>
         <button class="skip-btn" id="nextBtn" aria-label="下一首">
@@ -675,11 +675,32 @@ document.addEventListener('keydown',(e)=>{
   eqBars.innerHTML=h;
 })();
 
-// ── Autoplay ──
-function tryAuto(){if(isPlaying){cleanup();return}cleanup();hasInteracted=true;play()}
-function cleanup(){window.removeEventListener('pointerdown',tryAuto);window.removeEventListener('keydown',tryAuto);window.removeEventListener('touchstart',tryAuto)}
-window.addEventListener('pointerdown',tryAuto);window.addEventListener('keydown',tryAuto);window.addEventListener('touchstart',tryAuto);
-setTimeout(()=>{if(!hasInteracted&&!isPlaying)play()},800);
+// ── Startup Overlay (tap anywhere = tune in) ──
+function showStartOverlay(){
+  document.getElementById('overlayContainer').innerHTML = `
+    <div class="overlay" id="startOverlay" style="background:rgba(8,6,4,0.92);display:flex;align-items:center;justify-content:center;cursor:pointer">
+      <div class="detail-card" style="border-color:var(--amber);background:linear-gradient(175deg, #15120e 0%, #100d09 100%);animation:popIn .6s cubic-bezier(.18,.89,.32,1.2)">
+        <div style="font-size:72px;margin-bottom:12px">📻</div>
+        <div class="detail-name-zh" style="color:var(--t1);font-size:24px">Francis Jazz FM</div>
+        <div class="detail-name-en" style="color:var(--amber);font-size:15px;margin-top:4px">${theme.name} · ${theme.desc}</div>
+        <div class="btn-sound" style="margin-top:24px;background:var(--amber);font-size:20px;padding:14px 36px">▶ 点此开始收听</div>
+        <div style="font-size:12px;color:var(--t3);margin-top:10px">点击任意位置即可收听 · Tap anywhere to tune in</div>
+      </div>
+    </div>`;
+}
+
+function onStartInteraction(){
+  document.getElementById('overlayContainer').innerHTML = '';
+  window.removeEventListener('click', onStartInteraction);
+  window.removeEventListener('touchstart', onStartInteraction);
+  window.removeEventListener('keydown', onStartInteraction);
+  if(!isPlaying){ hasInteracted = true; play(); }
+}
+
+showStartOverlay();
+window.addEventListener('click', onStartInteraction);
+window.addEventListener('touchstart', onStartInteraction);
+window.addEventListener('keydown', onStartInteraction);
 
 window.addEventListener('beforeunload',()=>{if(introAudio)introAudio.pause();if(adAudio)adAudio.pause()});
 
