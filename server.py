@@ -10,7 +10,7 @@ This server:
 """
 import http.server, urllib.request, urllib.parse, json, socketserver, os, sys
 
-PORT = 8765
+PORT = int(os.environ.get('PORT', 8765))
 HOST = '0.0.0.0'
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
