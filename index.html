@@ -425,28 +425,33 @@ BV11DRuBrERg:38006161593,BV1DeRxB4EEH:38137757763,BV1pqfmYFELd:28110685531,
 BV1WmAoztEkQ:36419732187
 };
 
-// Mobile: fetch B站 audio URL via proxy, play via <audio>
+// Mobile: fetch B站 audio URL, play via <audio>
 async function playBiliMobile(bvid){
   const cid = MOBILE_CIDS[bvid];
   if(!cid) return false;
   try {
-    // Try local proxy first
-    const apiBase = window.location.hostname === 'localhost' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.')
-      ? window.location.origin : 'https://francisleelei-beep.github.io/francis-jazz-fm';
-
-    // B站 API doesn't have CORS — must use proxy or fallback
-    const resp = await fetch(`https://api.bilibili.com/x/player/playurl?bvid=${bvid}&cid=${cid}&fnval=1&qn=0&platform=html5`, {
-      headers: {'Referer':'https://www.bilibili.com'}
-    });
-    const data = await resp.json();
-    const url = data?.data?.durl?.[0]?.url;
-    if(!url) return false;
+    let mp4url;
+    // If on local server (same origin), use proxy endpoint (no CORS issue)
+    const isLocal = window.location.hostname === 'localhost' || window.location.hostname.startsWith('192.168.') || window.location.hostname.startsWith('10.');
+    if(isLocal){
+      const resp = await fetch(`/api/bili/playurl?bvid=${bvid}&cid=${cid}`);
+      const data = await resp.json();
+      mp4url = data.url;
+    } else {
+      // Deployed: try direct API (may fail due to CORS)
+      const resp = await fetch(`https://api.bilibili.com/x/player/playurl?bvid=${bvid}&cid=${cid}&fnval=1&qn=0&platform=html5`, {
+        headers: {'Referer':'https://www.bilibili.com'}
+      });
+      const data = await resp.json();
+      mp4url = data?.data?.durl?.[0]?.url;
+    }
+    if(!mp4url) return false;
 
     if(!mobileAudio){
       mobileAudio = new Audio();
       mobileAudio.crossOrigin = 'anonymous';
     }
-    mobileAudio.src = url;
+    mobileAudio.src = mp4url;
     mobileAudio.volume = 1.0;
     await mobileAudio.play();
     return true;
