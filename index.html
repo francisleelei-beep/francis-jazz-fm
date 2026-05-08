@@ -409,57 +409,54 @@ function updateTrackDisplay(v){
 
 // ── B站 ──
 const isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent) || window.innerWidth < 600;
-let currentBvid = null;
-let mobilePlayPending = false;
+let mobileBvidPending = null;
+let mobileFirstPlayDone = false;
 
 function playBili(bvid){
-  currentBvid = bvid;
   if(isMobile){
-    // Mobile: load with muted=0 but may be blocked. Set up tap-to-play fallback.
-    biliPlayer.src = `https://player.bilibili.com/player.html?bvid=${bvid}&autoplay=1&high_quality=1&danmaku=0&muted=0&playsinline=1`;
-    // Auto-detect if playback was blocked, show overlay after 3s
-    mobilePlayPending = true;
-    setTimeout(() => {
-      if(mobilePlayPending && isPlaying) showMobileOverlay();
-    }, 3000);
+    if(!mobileFirstPlayDone){
+      // First play on mobile: needs user gesture, show tap prompt
+      mobileBvidPending = bvid;
+      showMobilePlayPrompt();
+    }
+    // After first play: keep same iframe, don't change src
+    // B站 auto-plays next video when one ends
   } else {
     biliPlayer.src = `https://player.bilibili.com/player.html?bvid=${bvid}&autoplay=1&high_quality=1&danmaku=0&muted=0`;
   }
 }
 
-function showMobileOverlay(){
-  mobilePlayPending = false;
-  // B站 iframe likely blocked by mobile browser — show tap prompt
+function showMobilePlayPrompt(){
+  if(!mobileBvidPending || !isPlaying) return;
   const v = getVideo();
-  const overlay = document.getElementById('overlayContainer');
-  overlay.innerHTML = `
-    <div class="overlay" onclick="retryMobilePlay()" style="background:rgba(0,0,0,.3)">
-      <div class="detail-card" style="border-color:var(--amber)">
-        <div style="font-size:48px;margin-bottom:12px">📻</div>
-        <div class="detail-name-zh">${v.title}</div>
-        <div class="detail-name-en" style="color:var(--amber)">点击继续收听</div>
-        <button class="btn-sound" style="margin-top:16px;background:var(--amber);font-size:18px">▶ 继续播放</button>
+  document.getElementById('overlayContainer').innerHTML = `
+    <div class="overlay" style="background:rgba(8,6,4,0.85);display:flex;align-items:center;justify-content:center" onclick="triggerMobilePlay()">
+      <div class="detail-card" style="border-color:var(--amber);background:#15120e">
+        <div style="font-size:64px;margin-bottom:16px">📻</div>
+        <div class="detail-name-zh" style="color:var(--t1)">${v.title}</div>
+        <div class="detail-name-en" style="color:var(--amber)">Francis Jazz FM</div>
+        <button class="btn-sound" style="margin-top:20px;background:var(--amber);font-size:20px;padding:14px 36px">▶ 点击开始播放</button>
+        <div style="font-size:11px;color:var(--t3);margin-top:10px">手机浏览器需要点一下才能播放音乐</div>
       </div>
     </div>`;
 }
 
-function retryMobilePlay(){
-  const overlay = document.getElementById('overlayContainer');
-  overlay.innerHTML = '';
-  mobilePlayPending = false;
-  if(currentBvid && isPlaying){
-    // Reload iframe with fresh user gesture context
-    biliPlayer.src = '';
-    setTimeout(() => {
-      biliPlayer.src = `https://player.bilibili.com/player.html?bvid=${currentBvid}&autoplay=1&high_quality=1&danmaku=0&muted=0&playsinline=1`;
-    }, 200);
+function triggerMobilePlay(){
+  document.getElementById('overlayContainer').innerHTML = '';
+  if(mobileBvidPending){
+    biliPlayer.src = `https://player.bilibili.com/player.html?bvid=${mobileBvidPending}&autoplay=1&high_quality=1&danmaku=0&muted=0&playsinline=1`;
+    mobileBvidPending = null;
+    mobileFirstPlayDone = true;
   }
+  trackStartTime = Date.now();
+  updateProgressUI();
+  scheduleNext();
 }
 
 function stopBili(){
   biliPlayer.src = '';
-  currentBvid = null;
-  mobilePlayPending = false;
+  mobileBvidPending = null;
+  mobileFirstPlayDone = false;
 }
 
 // ── Audio player with voice boost (Web Audio API) ──
